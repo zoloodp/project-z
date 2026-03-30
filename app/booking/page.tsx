@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/lib/supabase";
-import AddressAutocomplete from "@/components/AddressAutocomplete";
+import { supabase } from "../../lib/supabase";
+import AddressAutocomplete from "../../components/AddressAutocomplete";
 
 type BookingRow = {
   id: string;
