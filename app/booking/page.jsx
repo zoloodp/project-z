@@ -6,7 +6,6 @@ import AddressAutocomplete from "../../components/AddressAutocomplete";
 
 const TIME_SLOTS = ["10:00", "12:00", "14:00", "16:00", "18:00"];
 const MAX_PER_DAY = 5;
-const MAX_PER_SLOT = 1;
 
 const SERVICES = [
   { value: "basic", label: "BASIC CLEAN", price: "35,000₮" },
@@ -15,7 +14,15 @@ const SERVICES = [
 ];
 
 function formatDateToYYYYMMDD(date) {
-  return date.toISOString().split("T")[0];
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function parseLocalDate(dateString) {
+  const [year, month, day] = dateString.split("-").map(Number);
+  return new Date(year, month - 1, day);
 }
 
 function getMonthDays(year, month) {
@@ -45,19 +52,16 @@ function formatMnPhone(value) {
   return `${digits.slice(0, 4)} ${digits.slice(4)}`;
 }
 
-function getSlotStatus(slot, bookings) {
-  const count = bookings.filter((b) => b.time === slot).length;
-  const left = MAX_PER_SLOT - count;
-
-  if (left <= 0) {
-    return { label: "Дүүрсэн", disabled: true, left: 0 };
+function getSlotStatus(bookings, selectedDate) {
+  if (!selectedDate) {
+    return { label: "Өдөр сонгоно уу", disabled: true };
   }
 
-  if (left <= 2) {
-    return { label: `${left} slot left`, disabled: false, left };
+  if (bookings.length >= MAX_PER_DAY) {
+    return { label: "Дүүрсэн", disabled: true };
   }
 
-  return { label: "Боломжтой", disabled: false, left };
+  return { label: "Боломжтой", disabled: false };
 }
 
 export default function BookingPage() {
@@ -192,7 +196,7 @@ export default function BookingPage() {
       }
 
       if (!addressData.address.trim()) {
-        setToast({ type: "error", message: "Хаягаа Google Maps-аас сонгоно уу." });
+        setToast({ type: "error", message: "Хаягаа оруулна уу." });
         return;
       }
 
@@ -206,7 +210,8 @@ export default function BookingPage() {
         return;
       }
 
-      const dateObj = new Date(selectedDate);
+      const dateObj = parseLocalDate(selectedDate);
+
       if (!isWeekend(dateObj)) {
         setToast({
           type: "error",
@@ -217,15 +222,6 @@ export default function BookingPage() {
 
       if (bookingsForDate.length >= MAX_PER_DAY) {
         setToast({ type: "error", message: "Энэ өдөр дүүрсэн байна." });
-        return;
-      }
-
-      const slotTaken = bookingsForDate.some((b) => b.time === selectedTime);
-      if (slotTaken) {
-        setToast({
-          type: "error",
-          message: "Энэ цагийн слот дүүрсэн байна.",
-        });
         return;
       }
 
@@ -276,7 +272,7 @@ export default function BookingPage() {
 
   const selectedDaySlotsLeft = selectedDate
     ? Math.max(MAX_PER_DAY - bookingsForDate.length, 0)
-    : 5;
+    : MAX_PER_DAY;
 
   return (
     <main className="min-h-screen bg-[#0f172a] px-4 py-10 text-white md:px-8">
@@ -310,12 +306,62 @@ export default function BookingPage() {
               {selectedDate ? selectedDate : "Өдөр сонгоно уу"}
             </p>
           </div>
+
+          <div className="rounded-3xl border border-slate-700 bg-slate-800/70 p-6">
+            <h3 className="text-2xl font-semibold">Таны сонголт</h3>
+            <div className="mt-4 space-y-3 text-slate-300">
+              <div className="flex items-center justify-between">
+                <span>Үйлчилгээ</span>
+                <span className="font-semibold text-white">
+                  {SERVICES.find((s) => s.value === service)?.label}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Үнэ</span>
+                <span className="font-semibold text-cyan-400">
+                  {SERVICES.find((s) => s.value === service)?.price}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Өдөр</span>
+                <span className="font-semibold text-white">
+                  {selectedDate || "-"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Цаг</span>
+                <span className="font-semibold text-white">
+                  {selectedTime || "-"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-slate-700 bg-slate-800/70 p-6">
+            <h3 className="text-2xl font-semibold">Үнийн мэдээлэл</h3>
+            <div className="mt-4 space-y-4 text-slate-300">
+              <div className="flex items-center justify-between">
+                <span>BASIC CLEAN</span>
+                <span className="font-semibold">35,000₮</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>STANDARD CLEAN</span>
+                <span className="font-semibold">70,000₮</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>DEEP CLEAN</span>
+                <span className="font-semibold">120,000₮</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="rounded-[32px] border border-slate-700 bg-slate-800/80 p-6 md:p-8">
           <div className="grid gap-5 md:grid-cols-2">
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-200">Нэр</label>
+              <label className="mb-2 block text-sm font-medium text-slate-200">
+                Нэр
+              </label>
               <input
                 type="text"
                 placeholder="Жишээ: Бат"
@@ -326,7 +372,9 @@ export default function BookingPage() {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-200">Утас</label>
+              <label className="mb-2 block text-sm font-medium text-slate-200">
+                Утас
+              </label>
               <input
                 type="tel"
                 inputMode="numeric"
@@ -464,7 +512,7 @@ export default function BookingPage() {
               <h3 className="mb-3 text-lg font-semibold">Цагийн слот</h3>
               <div className="space-y-3">
                 {TIME_SLOTS.map((slot) => {
-                  const status = getSlotStatus(slot, bookingsForDate);
+                  const status = getSlotStatus(bookingsForDate, selectedDate);
 
                   return (
                     <button
@@ -486,14 +534,10 @@ export default function BookingPage() {
                         <span
                           className={[
                             "text-sm",
-                            status.disabled
-                              ? "text-red-400"
-                              : status.left <= 2 && status.left > 0
-                              ? "text-yellow-300"
-                              : "text-emerald-400",
+                            status.disabled ? "text-red-400" : "text-emerald-400",
                           ].join(" ")}
                         >
-                          {!selectedDate ? "Өдөр сонгоно уу" : status.label}
+                          {status.label}
                         </span>
                       </div>
                     </button>
