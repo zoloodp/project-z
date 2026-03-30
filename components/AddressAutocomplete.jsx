@@ -2,29 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 
-type AddressValue = {
-  address: string;
-  lat: number | null;
-  lng: number | null;
-  placeId: string | null;
-};
-
-type Props = {
-  value: AddressValue;
-  onChange: (value: AddressValue) => void;
-};
-
-declare global {
-  interface Window {
-    google: any;
-  }
-}
-
-export default function AddressAutocomplete({ value, onChange }: Props) {
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  const mapRef = useRef<HTMLDivElement | null>(null);
-  const mapInstanceRef = useRef<any>(null);
-  const markerRef = useRef<any>(null);
+export default function AddressAutocomplete({ value, onChange }) {
+  const inputRef = useRef(null);
+  const mapRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const markerRef = useRef(null);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState("");
 
@@ -41,7 +23,7 @@ export default function AddressAutocomplete({ value, onChange }: Props) {
         if (!window.google?.maps) {
           const existingScript = document.querySelector(
             'script[data-google-maps="true"]'
-          ) as HTMLScriptElement | null;
+          );
 
           if (!existingScript) {
             const script = document.createElement("script");
@@ -51,13 +33,13 @@ export default function AddressAutocomplete({ value, onChange }: Props) {
             script.setAttribute("data-google-maps", "true");
             document.head.appendChild(script);
 
-            await new Promise<void>((resolve, reject) => {
+            await new Promise((resolve, reject) => {
               script.onload = () => resolve();
               script.onerror = () =>
                 reject(new Error("Google Maps script ачаалж чадсангүй."));
             });
           } else {
-            await new Promise<void>((resolve) => {
+            await new Promise((resolve) => {
               if (window.google?.maps) {
                 resolve();
                 return;
