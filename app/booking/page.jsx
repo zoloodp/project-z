@@ -4,53 +4,23 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import AddressAutocomplete from "../../components/AddressAutocomplete";
 
-type BookingRow = {
-  id: string;
-  name: string;
-  phone: string;
-  service: "basic" | "standard" | "deep";
-  address: string;
-  date: string;
-  time: string;
-  status: "pending" | "confirmed" | "done";
-};
-
-type AddressValue = {
-  address: string;
-  lat: number | null;
-  lng: number | null;
-  placeId: string | null;
-};
-
 const TIME_SLOTS = ["10:00", "12:00", "14:00", "16:00", "18:00"];
 const MAX_PER_DAY = 5;
 const MAX_PER_SLOT = 1;
 
 const SERVICES = [
-  {
-    value: "basic",
-    label: "BASIC CLEAN",
-    price: "35,000₮",
-  },
-  {
-    value: "standard",
-    label: "STANDARD CLEAN",
-    price: "70,000₮",
-  },
-  {
-    value: "deep",
-    label: "DEEP CLEAN",
-    price: "120,000₮",
-  },
-] as const;
+  { value: "basic", label: "BASIC CLEAN", price: "35,000₮" },
+  { value: "standard", label: "STANDARD CLEAN", price: "70,000₮" },
+  { value: "deep", label: "DEEP CLEAN", price: "120,000₮" },
+];
 
-function formatDateToYYYYMMDD(date: Date) {
+function formatDateToYYYYMMDD(date) {
   return date.toISOString().split("T")[0];
 }
 
-function getMonthDays(year: number, month: number) {
+function getMonthDays(year, month) {
   const date = new Date(year, month, 1);
-  const days: Date[] = [];
+  const days = [];
 
   while (date.getMonth() === month) {
     days.push(new Date(date));
@@ -60,46 +30,34 @@ function getMonthDays(year: number, month: number) {
   return days;
 }
 
-function isWeekend(date: Date) {
+function isWeekend(date) {
   const day = date.getDay();
   return day === 0 || day === 6;
 }
 
-function digitsOnly(value: string) {
+function digitsOnly(value) {
   return value.replace(/\D/g, "").slice(0, 8);
 }
 
-function formatMnPhone(value: string) {
+function formatMnPhone(value) {
   const digits = digitsOnly(value);
   if (digits.length <= 4) return digits;
   return `${digits.slice(0, 4)} ${digits.slice(4)}`;
 }
 
-function getSlotStatus(slot: string, bookings: BookingRow[]) {
+function getSlotStatus(slot, bookings) {
   const count = bookings.filter((b) => b.time === slot).length;
   const left = MAX_PER_SLOT - count;
 
   if (left <= 0) {
-    return {
-      label: "Дүүрсэн",
-      disabled: true,
-      left: 0,
-    };
+    return { label: "Дүүрсэн", disabled: true, left: 0 };
   }
 
   if (left <= 2) {
-    return {
-      label: `${left} slot left`,
-      disabled: false,
-      left,
-    };
+    return { label: `${left} slot left`, disabled: false, left };
   }
 
-  return {
-    label: "Боломжтой",
-    disabled: false,
-    left,
-  };
+  return { label: "Боломжтой", disabled: false, left };
 }
 
 export default function BookingPage() {
@@ -109,21 +67,21 @@ export default function BookingPage() {
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [service, setService] = useState<"basic" | "standard" | "deep">("standard");
-  const [selectedDate, setSelectedDate] = useState<string>("");
+  const [service, setService] = useState("standard");
+  const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
-  const [addressData, setAddressData] = useState<AddressValue>({
+  const [addressData, setAddressData] = useState({
     address: "",
     lat: null,
     lng: null,
     placeId: null,
   });
 
-  const [bookingsForDate, setBookingsForDate] = useState<BookingRow[]>([]);
-  const [fullyBookedDates, setFullyBookedDates] = useState<string[]>([]);
+  const [bookingsForDate, setBookingsForDate] = useState([]);
+  const [fullyBookedDates, setFullyBookedDates] = useState([]);
   const [loadingDates, setLoadingDates] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [toast, setToast] = useState(null);
 
   const phoneDigits = digitsOnly(phone);
   const isPhoneValid = phoneDigits.length === 8;
@@ -170,8 +128,8 @@ export default function BookingPage() {
 
       if (error) throw error;
 
-      const grouped: Record<string, number> = {};
-      (data || []).forEach((row: { date: string }) => {
+      const grouped = {};
+      (data || []).forEach((row) => {
         grouped[row.date] = (grouped[row.date] || 0) + 1;
       });
 
@@ -187,7 +145,7 @@ export default function BookingPage() {
     }
   }
 
-  async function fetchBookingsForDate(date: string) {
+  async function fetchBookingsForDate(date) {
     try {
       const { data, error } = await supabase
         .from("bookings")
@@ -196,14 +154,14 @@ export default function BookingPage() {
 
       if (error) throw error;
 
-      setBookingsForDate((data as BookingRow[]) || []);
+      setBookingsForDate(data || []);
     } catch (error) {
       console.error(error);
       setBookingsForDate([]);
     }
   }
 
-  function changeMonth(direction: "prev" | "next") {
+  function changeMonth(direction) {
     if (direction === "prev") {
       if (currentMonth === 0) {
         setCurrentMonth(11);
@@ -334,7 +292,7 @@ export default function BookingPage() {
             </p>
           </div>
 
-          <div className="rounded-3xl border border-slate-700 bg-slate-800/70 p-6 shadow-[0_0_30px_rgba(59,130,246,0.08)]">
+          <div className="rounded-3xl border border-slate-700 bg-slate-800/70 p-6">
             <h2 className="text-xl font-semibold text-emerald-400">
               On-site үйлчилгээ
             </h2>
@@ -352,62 +310,12 @@ export default function BookingPage() {
               {selectedDate ? selectedDate : "Өдөр сонгоно уу"}
             </p>
           </div>
-
-          <div className="rounded-3xl border border-slate-700 bg-slate-800/70 p-6">
-            <h3 className="text-2xl font-semibold">Таны сонголт</h3>
-            <div className="mt-4 space-y-3 text-slate-300">
-              <div className="flex items-center justify-between">
-                <span>Үйлчилгээ</span>
-                <span className="font-semibold text-white">
-                  {SERVICES.find((s) => s.value === service)?.label}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Үнэ</span>
-                <span className="font-semibold text-cyan-400">
-                  {SERVICES.find((s) => s.value === service)?.price}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Өдөр</span>
-                <span className="font-semibold text-white">
-                  {selectedDate || "-"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Цаг</span>
-                <span className="font-semibold text-white">
-                  {selectedTime || "-"}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-3xl border border-slate-700 bg-slate-800/70 p-6">
-            <h3 className="text-2xl font-semibold">Үнийн мэдээлэл</h3>
-            <div className="mt-4 space-y-4 text-slate-300">
-              <div className="flex items-center justify-between">
-                <span>BASIC CLEAN</span>
-                <span className="font-semibold">35,000₮</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>STANDARD CLEAN</span>
-                <span className="font-semibold">70,000₮</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>DEEP CLEAN</span>
-                <span className="font-semibold">120,000₮</span>
-              </div>
-            </div>
-          </div>
         </div>
 
-        <div className="rounded-[32px] border border-slate-700 bg-slate-800/80 p-6 shadow-[0_0_40px_rgba(34,211,238,0.08)] md:p-8">
+        <div className="rounded-[32px] border border-slate-700 bg-slate-800/80 p-6 md:p-8">
           <div className="grid gap-5 md:grid-cols-2">
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-200">
-                Нэр
-              </label>
+              <label className="mb-2 block text-sm font-medium text-slate-200">Нэр</label>
               <input
                 type="text"
                 placeholder="Жишээ: Бат"
@@ -418,9 +326,7 @@ export default function BookingPage() {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-200">
-                Утас
-              </label>
+              <label className="mb-2 block text-sm font-medium text-slate-200">Утас</label>
               <input
                 type="tel"
                 inputMode="numeric"
@@ -448,7 +354,6 @@ export default function BookingPage() {
             <label className="mb-2 block text-sm font-medium text-slate-200">
               Үйлчилгээний төрөл
             </label>
-
             <div className="grid gap-3 md:grid-cols-3">
               {SERVICES.map((item) => (
                 <button
