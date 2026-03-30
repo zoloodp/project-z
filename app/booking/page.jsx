@@ -8,10 +8,29 @@ const TIME_SLOTS = ["10:00", "12:00", "14:00", "16:00", "18:00"];
 const MAX_PER_DAY = 5;
 
 const SERVICES = [
-  { value: "basic", label: "BASIC CLEAN", price: "35,000₮" },
-  { value: "standard", label: "STANDARD CLEAN", price: "70,000₮" },
-  { value: "deep", label: "DEEP CLEAN", price: "120,000₮" },
+  { value: "basic", label: "BASIC CLEAN", price: 35000 },
+  { value: "standard", label: "STANDARD CLEAN", price: 70000 },
+  { value: "deep", label: "DEEP CLEAN", price: 120000 },
 ];
+
+const ADDONS = [
+  {
+    value: "ssd_setup",
+    label: "SSD Setup",
+    price: 30000,
+    description: "PC format + Office программ суулгах",
+  },
+  {
+    value: "fps_boost",
+    label: "FPS Boost",
+    price: 20000,
+    description: "Stress test + basic performance optimization",
+  },
+];
+
+function formatPrice(value) {
+  return `${value.toLocaleString()}₮`;
+}
 
 function formatDateToYYYYMMDD(date) {
   const year = date.getFullYear();
@@ -72,6 +91,7 @@ export default function BookingPage() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [service, setService] = useState("standard");
+  const [selectedAddons, setSelectedAddons] = useState([]);
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
   const [addressData, setAddressData] = useState({
@@ -98,6 +118,16 @@ export default function BookingPage() {
     () => getMonthDays(currentYear, currentMonth),
     [currentYear, currentMonth]
   );
+
+  const basePrice =
+    SERVICES.find((s) => s.value === service)?.price || 0;
+
+  const addonsTotal = selectedAddons.reduce((sum, addonValue) => {
+    const addon = ADDONS.find((a) => a.value === addonValue);
+    return sum + (addon ? addon.price : 0);
+  }, 0);
+
+  const totalPrice = basePrice + addonsTotal;
 
   useEffect(() => {
     fetchMonthBookingSummary();
@@ -183,6 +213,14 @@ export default function BookingPage() {
     }
   }
 
+  function toggleAddon(addonValue) {
+    setSelectedAddons((prev) =>
+      prev.includes(addonValue)
+        ? prev.filter((item) => item !== addonValue)
+        : [...prev, addonValue]
+    );
+  }
+
   async function handleSubmit() {
     try {
       if (!name.trim()) {
@@ -236,6 +274,7 @@ export default function BookingPage() {
           date: selectedDate,
           time: selectedTime,
           status: "pending",
+          addons: selectedAddons,
         },
       ]);
 
@@ -249,6 +288,7 @@ export default function BookingPage() {
       setName("");
       setPhone("");
       setService("standard");
+      setSelectedAddons([]);
       setAddressData({
         address: "",
         lat: null,
@@ -316,22 +356,39 @@ export default function BookingPage() {
                   {SERVICES.find((s) => s.value === service)?.label}
                 </span>
               </div>
-              <div className="flex items-center justify-between">
-                <span>Үнэ</span>
-                <span className="font-semibold text-cyan-400">
-                  {SERVICES.find((s) => s.value === service)?.price}
-                </span>
+
+              <div className="flex items-start justify-between gap-4">
+                <span>Нэмэлтүүд</span>
+                <div className="text-right font-semibold text-white">
+                  {selectedAddons.length > 0 ? (
+                    selectedAddons.map((addonValue) => {
+                      const addon = ADDONS.find((a) => a.value === addonValue);
+                      return <div key={addonValue}>{addon?.label}</div>;
+                    })
+                  ) : (
+                    <span>-</span>
+                  )}
+                </div>
               </div>
+
               <div className="flex items-center justify-between">
                 <span>Өдөр</span>
                 <span className="font-semibold text-white">
                   {selectedDate || "-"}
                 </span>
               </div>
+
               <div className="flex items-center justify-between">
                 <span>Цаг</span>
                 <span className="font-semibold text-white">
                   {selectedTime || "-"}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between border-t border-slate-700 pt-3">
+                <span>Нийт үнэ</span>
+                <span className="font-bold text-emerald-400">
+                  {formatPrice(totalPrice)}
                 </span>
               </div>
             </div>
@@ -351,6 +408,14 @@ export default function BookingPage() {
               <div className="flex items-center justify-between">
                 <span>DEEP CLEAN</span>
                 <span className="font-semibold">120,000₮</span>
+              </div>
+              <div className="flex items-center justify-between border-t border-slate-700 pt-4">
+                <span>SSD Setup</span>
+                <span className="font-semibold">+30,000₮</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>FPS Boost</span>
+                <span className="font-semibold">+20,000₮</span>
               </div>
             </div>
           </div>
@@ -416,7 +481,9 @@ export default function BookingPage() {
                   ].join(" ")}
                 >
                   <div className="font-semibold">{item.label}</div>
-                  <div className="mt-1 text-sm opacity-90">{item.price}</div>
+                  <div className="mt-1 text-sm opacity-90">
+                    {formatPrice(item.price)}
+                  </div>
                 </button>
               ))}
             </div>
@@ -424,6 +491,42 @@ export default function BookingPage() {
 
           <div className="mt-5">
             <AddressAutocomplete value={addressData} onChange={setAddressData} />
+          </div>
+
+          <div className="mt-5">
+            <label className="mb-2 block text-sm font-medium text-slate-200">
+              Нэмэлт үйлчилгээ
+            </label>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              {ADDONS.map((addon) => {
+                const selected = selectedAddons.includes(addon.value);
+
+                return (
+                  <button
+                    key={addon.value}
+                    type="button"
+                    onClick={() => toggleAddon(addon.value)}
+                    className={[
+                      "rounded-2xl border px-4 py-4 text-left transition",
+                      selected
+                        ? "border-emerald-400 bg-emerald-500/10 text-white"
+                        : "border-slate-700 bg-slate-950/80 text-white hover:border-cyan-400/60",
+                    ].join(" ")}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="font-semibold">{addon.label}</div>
+                      <div className="text-emerald-400">
+                        +{formatPrice(addon.price)}
+                      </div>
+                    </div>
+                    <div className="mt-2 text-sm text-slate-300">
+                      {addon.description}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_220px]">
@@ -555,7 +658,7 @@ export default function BookingPage() {
           >
             {submitting
               ? "Илгээж байна..."
-              : `${SERVICES.find((s) => s.value === service)?.price} -ийн захиалга илгээх`}
+              : `${formatPrice(totalPrice)} -ийн захиалга илгээх`}
           </button>
 
           <p className="mt-3 text-center text-sm text-slate-400">
