@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 
 const SERVICE_PRICES = {
@@ -58,15 +59,82 @@ function calculateBookingTotal(booking) {
 }
 
 export default function AdminPage() {
+  const router = useRouter();
+
   const [bookings, setBookings] = useState([]);
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("");
   const [loading, setLoading] = useState(true);
+  const [authChecking, setAuthChecking] = useState(true);
+  const [currentUser, setCurrentUser] = useState(null);
   const [toast, setToast] = useState(null);
 
   useEffect(() => {
-    loadBookings();
-  }, []);
+    let mounted = true;
+
+    async function init() {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        const allowedEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+
+        if (!session?.user) {
+          router.replace("/admin/login");
+          return;
+        }
+
+        if (
+          allowedEmail &&
+          session.user.email?.toLowerCase() !== allowedEmail.toLowerCase()
+        ) {
+          await supabase.auth.signOut();
+          router.replace("/admin/login");
+          return;
+        }
+
+        if (mounted) {
+          setCurrentUser(session.user);
+          setAuthChecking(false);
+        }
+
+        await loadBookings();
+      } catch (error) {
+        console.error(error);
+        router.replace("/admin/login");
+      }
+    }
+
+    init();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const allowedEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+
+      if (!session?.user) {
+        router.replace("/admin/login");
+        return;
+      }
+
+      if (
+        allowedEmail &&
+        session.user.email?.toLowerCase() !== allowedEmail.toLowerCase()
+      ) {
+        await supabase.auth.signOut();
+        router.replace("/admin/login");
+        return;
+      }
+
+      setCurrentUser(session.user);
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, [router]);
 
   useEffect(() => {
     if (!toast) return;
@@ -134,6 +202,16 @@ export default function AdminPage() {
     }
   }
 
+  async function handleLogout() {
+    try {
+      await supabase.auth.signOut();
+      router.replace("/admin/login");
+    } catch (error) {
+      console.error(error);
+      setToast({ type: "error", message: "Logout хийхэд алдаа гарлаа." });
+    }
+  }
+
   const filteredBookings = useMemo(() => {
     return bookings.filter((booking) => {
       const matchesStatus =
@@ -145,7 +223,10 @@ export default function AdminPage() {
     });
   }, [bookings, statusFilter, dateFilter]);
 
-  const todayString = new Date().toISOString().split("T")[0];
+  const todayLocal = new Date();
+  const todayString = `${todayLocal.getFullYear()}-${String(
+    todayLocal.getMonth() + 1
+  ).padStart(2, "0")}-${String(todayLocal.getDate()).padStart(2, "0")}`;
 
   const todayBookings = bookings.filter((booking) => booking.date === todayString);
 
@@ -154,14 +235,44 @@ export default function AdminPage() {
     0
   );
 
+  if (authChecking) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#0f172a] px-4 text-white">
+        <div className="w-full max-w-6xl space-y-4 rounded-3xl border border-slate-700 bg-slate-800/70 p-8">
+          <div className="h-10 w-64 animate-pulse rounded bg-slate-700/40" />
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="h-28 animate-pulse rounded-3xl bg-slate-700/30" />
+            <div className="h-28 animate-pulse rounded-3xl bg-slate-700/30" />
+          </div>
+          <div className="h-96 animate-pulse rounded-3xl bg-slate-700/20" />
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-[#0f172a] px-4 py-8 text-white md:px-8">
       <div className="mx-auto max-w-7xl">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold md:text-4xl">Admin Dashboard</h1>
-          <p className="mt-2 text-slate-400">
-            Захиалгуудыг хянах, баталгаажуулах, дуусгах.
-          </p>
+        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold md:text-4xl">Admin Dashboard</h1>
+            <p className="mt-2 text-slate-400">
+              Захиалгуудыг хянах, баталгаажуулах, дуусгах.
+            </p>
+            {currentUser?.email && (
+              <p className="mt-2 text-sm text-slate-500">
+                Logged in as: {currentUser.email}
+              </p>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="rounded-2xl border border-red-400/30 bg-red-500/10 px-5 py-3 text-sm font-medium text-red-300 transition hover:bg-red-500/20"
+          >
+            Logout
+          </button>
         </div>
 
         <div className="mb-8 grid gap-4 md:grid-cols-2">
